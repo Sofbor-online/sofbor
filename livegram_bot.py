@@ -38,4 +38,4 @@ async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=ADMIN_ID, text=f"{file_info} (тип не підтримується)")
 
 # Відповідь адміну
-async def reply_to_user(update: Update
+async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
