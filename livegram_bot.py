@@ -39,3 +39,12 @@ async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Відповідь адміну
 async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.chat_id != ADMIN_ID:
+        return
+    if context.args and len(context.args) >= 2:
+        user_id = int(context.args[0])
+        reply_text = ' '.join(context.args[1:])
+        await context.bot.send_message(chat_id=user_id, text=f"💬 Від адміністратора:\n{reply_text}")
+    else:
+        await update.message.reply_text("❗ Формат: /reply <user_id> <повідомлення>")
+
