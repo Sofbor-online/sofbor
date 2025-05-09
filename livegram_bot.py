@@ -1,27 +1,30 @@
 import os
-from telegram import Update, File
+from flask import Flask, request
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import Dispatcher
 
+# Ініціалізація Flask
+app = Flask(__name__)
+
+# Отримуємо змінні середовища
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# Команда /start
+# Створюємо додаток для Telegram бота
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привіт! Напиши або надішли файл, і адміністратор отримає його.")
 
-# Переслати текст адміну
 async def forward_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     msg = f"📩 Повідомлення від @{user.username or user.first_name} (ID: {user.id}):\n\n{update.message.text}"
     await context.bot.send_message(chat_id=ADMIN_ID, text=msg)
 
-# Переслати медіа адміну
 async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     caption = update.message.caption or ""
     file_info = f"📎 Файл від @{user.username or user.first_name} (ID: {user.id})"
     
-    # Визначити тип медіа
     if update.message.photo:
         file = await update.message.photo[-1].get_file()
         await file.download_to_drive("photo.jpg")
@@ -37,7 +40,6 @@ async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await context.bot.send_message(chat_id=ADMIN_ID, text=f"{file_info} (тип не підтримується)")
 
-# Відповідь адміну
 async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat_id != ADMIN_ID:
         return
@@ -48,3 +50,33 @@ async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("❗ Формат: /reply <user_id> <повідомлення>")
 
+# Ініціалізація бота
+async def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("reply", reply_to_user))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_text))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.DOCUMENT | filters.VIDEO, forward_media))
+    return app
+
+# Створюємо веб-сервер
+@app.route("/" + BOT_TOKEN, methods=["POST"])
+def webhook():
+    json_str = request.get_data().decode("UTF-8")
+    update = Update.de_json(json_str, bot)
+    dispatcher.process_update(update)
+    return "OK"
+
+if __name__ == "__main__":
+    from telegram.ext import Dispatcher
+    import logging
+    
+    # Логування
+    logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+    
+    # Ініціалізація бота та диспетчера
+    bot = ApplicationBuilder().token(BOT_TOKEN).build()
+    dispatcher = Dispatcher(bot, None)
+    
+    # Запуск сервера
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
