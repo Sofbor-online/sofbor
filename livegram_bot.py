@@ -7,21 +7,27 @@ from telegram.ext import (
     ContextTypes, filters
 )
 
+# 🔐 Токен бота і ID адміна
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-app = Flask(__name__)  # Flask для порту
+# 🧩 Flask застосунок (для Render порту)
+app = Flask(__name__)
 
-# ======= Telegram Бот Handlers =======
+# ====== Telegram Handlers ======
 
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привіт! Надішли повідомлення або файл, і адміністратор отримає його.")
+    await update.message.reply_text("Привіт! Надішли повідомлення або файл — адміністратор отримає його.")
 
+# Пересилання тексту
 async def forward_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     msg = f"📩 Повідомлення від @{user.username or user.first_name} (ID: {user.id}):\n\n{update.message.text}"
     await context.bot.send_message(chat_id=ADMIN_ID, text=msg)
+    await update.message.reply_text("✅ Дякуємо! Ваше повідомлення надіслано адміністратору.")
 
+# Пересилання медіа
 async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     caption = update.message.caption or ""
@@ -39,6 +45,9 @@ async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await context.bot.send_message(chat_id=ADMIN_ID, text=f"{file_info} (тип не підтримується)")
 
+    await update.message.reply_text("✅ Дякуємо! Ваш файл надіслано адміністратору.")
+
+# /reply <user_id> <повідомлення>
 async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat_id != ADMIN_ID:
         return
@@ -49,7 +58,7 @@ async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("❗ Формат: /reply <user_id> <повідомлення>")
 
-# ======= Запуск Telegram бота в окремому потоці =======
+# ====== Запуск Telegram бота в іншому потоці ======
 def start_bot():
     app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -61,15 +70,13 @@ def start_bot():
     print("🤖 Бот запущено (polling)...")
     app_telegram.run_polling()
 
-# ======= Flask маршрут, щоб Render бачив порт =======
+# ====== Flask маршрут для Render порту ======
 @app.route('/')
 def home():
     return "Telegram bot is running!", 200
 
+# ====== Запуск Flask та бота ======
 if __name__ == '__main__':
-    # Запускаємо бота в іншому потоці
     threading.Thread(target=start_bot).start()
-
-    # Flask запускається на порту, який хоче Render
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
