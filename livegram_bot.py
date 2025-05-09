@@ -9,17 +9,17 @@ from telegram.ext import (
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# /start команда
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привіт! Надішли повідомлення або файл, і адміністратор отримає його.")
 
-# Пересилка тексту адміну
+# Пересилання тексту адміну
 async def forward_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     msg = f"📩 Повідомлення від @{user.username or user.first_name} (ID: {user.id}):\n\n{update.message.text}"
     await context.bot.send_message(chat_id=ADMIN_ID, text=msg)
 
-# Пересилка медіа (фото, документи, відео)
+# Пересилання медіа (фото, документи, відео)
 async def forward_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     caption = update.message.caption or ""
@@ -52,18 +52,17 @@ async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("❗ Формат: /reply <user_id> <повідомлення>")
 
-# Головна функція
+# Запуск
 async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reply", reply_to_user))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_text))
-    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | filters.Video.ALL, forward_media))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | filters.VIDEO, forward_media))
 
     print("🤖 Бот запущено (polling)...")
     await app.run_polling()
 
-# Запуск
 if __name__ == "__main__":
     asyncio.run(main())
