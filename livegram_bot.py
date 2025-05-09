@@ -1,5 +1,6 @@
 import os
 import threading
+import logging
 from flask import Flask
 from telegram import Update
 from telegram.ext import (
@@ -7,11 +8,16 @@ from telegram.ext import (
     ContextTypes, filters
 )
 
-# 🔐 Токен бота і ID адміна
+# Налаштування логування
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Токен бота і ID адміна
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# 🧩 Flask застосунок (для Render порту)
+# Flask застосунок (для Render порту)
 app = Flask(__name__)
 
 # ====== Telegram Handlers ======
@@ -60,15 +66,18 @@ async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ====== Запуск Telegram бота в іншому потоці ======
 def start_bot():
-    app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
+    try:
+        app_telegram = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app_telegram.add_handler(CommandHandler("start", start))
-    app_telegram.add_handler(CommandHandler("reply", reply_to_user))
-    app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_text))
-    app_telegram.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | filters.VIDEO, forward_media))
+        app_telegram.add_handler(CommandHandler("start", start))
+        app_telegram.add_handler(CommandHandler("reply", reply_to_user))
+        app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_text))
+        app_telegram.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | filters.VIDEO, forward_media))
 
-    print("🤖 Бот запущено (polling)...")
-    app_telegram.run_polling()
+        logger.info("🤖 Бот запущено (polling)...")
+        app_telegram.run_polling()
+    except Exception as e:
+        logger.error(f"Error in bot: {e}")
 
 # ====== Flask маршрут для Render порту ======
 @app.route('/')
@@ -79,4 +88,5 @@ def home():
 if __name__ == '__main__':
     threading.Thread(target=start_bot).start()
     port = int(os.environ.get("PORT", 10000))
+    logger.info(f"Flask server is running on port {port}")
     app.run(host='0.0.0.0', port=port)
